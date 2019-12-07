@@ -76,6 +76,26 @@ def _convert_relu(node,graph,err):
 
     return layer
 
+def _convert_leakyrelu(node,graph,err):
+    input_name = str(node.inputs[0])
+    output_name = str(node.outputs[0])
+    name = str(node.name)
+
+    if input_name==output_name:
+        inplace = True
+    else:
+        inplace = False
+
+    negative_slope = node.attrs.get("alpha", 0)
+
+    layer = myf("ReLU",name,[input_name],[output_name],in_place=inplace,
+                negative_slope=negative_slope)
+    # l_top_relu1 = L.ReLU(l_bottom, name=name, in_place=True)
+
+    graph.channel_dims[output_name] = graph.channel_dims[input_name]
+
+    return layer
+
 def _convert_sigmoid(node,graph,err):
     input_name = str(node.inputs[0])
     output_name = str(node.outputs[0])
@@ -274,7 +294,8 @@ def _convert_gemm(node,graph,err):
     return layer
 
 def _convert_upsample(node,graph,err):
-    factor = int(node.attrs["height_scale"])
+    #factor = int(node.attrs["height_scale"])
+    factor = 2 
     node_name = node.name
     input_name = str(node.inputs[0])
     output_name = str(node.outputs[0])
@@ -286,7 +307,8 @@ def _convert_upsample(node,graph,err):
     #             kernel_size=2 * factor - factor % 2,
     #             stride=factor, group=channels,
     #             pad = pad, num_output=channels, bias_term = False)
-    mode = node.attrs["mode"]
+    #mode = node.attrs["mode"]
+    mode = "nearest"
     #https://github.com/pytorch/pytorch/issues/6900
     if mode=="bilinear":
         layer = myf("Deconvolution", node_name, [input_name], [output_name],
@@ -384,6 +406,7 @@ def _convert_conv_transpose(node,graph,err):
 _ONNX_NODE_REGISTRY = {
     "Conv": _convert_conv,
     "Relu": _convert_relu,
+    "LeakyRelu": _convert_leakyrelu,
     "BatchNormalization": _convert_BatchNorm,
     "Add": _convert_Add,
     "Mul": _convert_Mul,
