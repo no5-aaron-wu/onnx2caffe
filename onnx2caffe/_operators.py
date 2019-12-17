@@ -160,7 +160,7 @@ def _convert_Add(node,graph,err):
 
     layer = myf("Eltwise",node_name,input_name_list,[output_name],operation=P.Eltwise.SUM)
     graph.channel_dims[output_name] = graph.channel_dims[input_name_list[0]]
-    return layer
+    return layerhttps://code.aliyun.com/Insta360_AI/onnx2caffe?spm=a2111a.8458726.0.0.6c6c3531xSZE2x
 
 def _convert_Mul(node,graph,err):
     input_name_list = [str(i) for i in node.inputs]
@@ -400,7 +400,27 @@ def _convert_conv_transpose(node,graph,err):
     #         pad_w=pad_w,
     #         group=groups,
     #         bias_term=bias_term))
+	
+def _convert_clip(node,graph,err):
+    input_name = str(node.inputs[0])
+    output_name = str(node.outputs[0])
+    name = str(node.name)
 
+    if input_name==output_name:
+        inplace = True
+    else:
+        inplace = False
+
+    min = node.attrs.get("min", 0)
+	
+    max = node.attrs.get("max", 0)
+    layer = myf("Clip",name,[input_name],[output_name],in_place=inplace,
+                max=max,min=min)
+    # l_top_relu1 = L.ReLU(l_bottom, name=name, in_place=True)
+
+    graph.channel_dims[output_name] = graph.channel_dims[input_name]
+
+    return layer
 
 
 _ONNX_NODE_REGISTRY = {
@@ -420,4 +440,5 @@ _ONNX_NODE_REGISTRY = {
     "ConvTranspose": _convert_conv_transpose,
     "Sigmoid": _convert_sigmoid,
     "Flatten": _convert_Flatten,
+    "Clip": _convert_clip,
 }

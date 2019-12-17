@@ -70,6 +70,8 @@ def _convert_pool(net, node, graph, err):
 
 def _convert_dropout(net, node, graph, err):
     pass
+def _convert_clip(net, node, graph, err):
+    pass	
 
 def _convert_gemm(net, node, graph, err):
     node_name = node.name
@@ -144,6 +146,7 @@ _ONNX_NODE_REGISTRY = {
     "ConvTranspose": _convert_conv_transpose,
     "Sigmoid": _convert_sigmoid,
     "Flatten": _convert_Flatten,
+    "Clip": _convert_clip,
 }
 
 
