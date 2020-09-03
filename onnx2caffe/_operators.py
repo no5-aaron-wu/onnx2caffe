@@ -307,8 +307,7 @@ def _convert_upsample(node,graph,err):
     #             kernel_size=2 * factor - factor % 2,
     #             stride=factor, group=channels,
     #             pad = pad, num_output=channels, bias_term = False)
-    #mode = node.attrs["mode"]
-    mode = "nearest"
+    mode = node.attrs["mode"]
     #https://github.com/pytorch/pytorch/issues/6900
     if mode=="bilinear":
         layer = myf("Deconvolution", node_name, [input_name], [output_name],

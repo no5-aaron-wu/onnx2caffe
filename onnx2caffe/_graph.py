@@ -35,7 +35,7 @@ def _convertAttributeProto(onnx_arg):  # type: (AttributeProto) -> AttributeValu
     elif onnx_arg.HasField('i'):
         return onnx_arg.i
     elif onnx_arg.HasField('s'):
-        return onnx_arg.s
+        return onnx_arg.s.decode()
     elif onnx_arg.HasField('t'):
         return numpy_helper.to_array(onnx_arg.t)
     elif len(onnx_arg.floats):
