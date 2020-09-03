@@ -14,6 +14,8 @@ cd onnx
 python setup.py install
 ```
 
+**news**: test on protobuf 3.0.0 and onnx 1.7.0 is ok 
+
 ### How to use
 run test.py to make sure it has been installed correctly  
 To convert onnx model to caffe:
