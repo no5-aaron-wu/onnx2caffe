@@ -20,12 +20,37 @@ transformers = [
     ConvAddFuser(),
 ]
 
+def isPoolingSizeUnmatched(shape_dict, node):
+    do_slice_h = False
+    do_slice_w = False
+
+    intput_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_shape = shape_dict[intput_name]
+    output_shape = shape_dict[output_name]
+    pad_h = node.attrs["pads"][2]
+    pad_w = node.attrs["pads"][3]
+    kernel_h = node.attrs["kernel_shape"][0]
+    kernel_w = node.attrs["kernel_shape"][1]
+    stride_h = node.attrs["strides"][0]
+    stride_w = node.attrs["strides"][1]
+    pooling_h = int(np.ceil((input_shape[2] + 2 * pad_h - kernel_h) / stride_h + 1))
+    pooling_w = int(np.ceil((input_shape[3] + 2 * pad_w - kernel_w) / stride_w + 1))
+    if pooling_h != output_shape[2]:
+        do_slice_h = True
+    if pooling_w != output_shape[3]:
+        do_slice_w = True
+
+    return do_slice_h, do_slice_w
+
 def convertToCaffe(graph, prototxt_save_path, caffe_model_save_path):
 
     exist_edges = []
     layers = []
     exist_nodes = []
     err = ErrorHandling()
+    to_be_replaced = {}
+
     for i in graph.inputs:
         edge_name = i[0]
         input_layer = cvt.make_input(i)
@@ -53,11 +78,40 @@ def convertToCaffe(graph, prototxt_save_path, caffe_model_save_path):
             continue
         converter_fn = cvt._ONNX_NODE_REGISTRY[op_type]
         layer = converter_fn(node,graph,err)
+
+        # replace the input which connect the origin polling layer
+        if len(to_be_replaced) > 0:
+            if type(layer)==tuple:
+                for l in layer:
+                    for i, input_layer in enumerate(l.inputs):
+                        if input_layer in to_be_replaced:
+                            l.inputs[i] = to_be_replaced[input_layer]
+            else:
+                for i, input_layer in enumerate(layer.inputs):
+                    if input_layer in to_be_replaced:
+                        layer.inputs[i]=to_be_replaced[input_layer]
+
         if type(layer)==tuple:
             for l in layer:
                 layers.append(l)
         else:
             layers.append(layer)
+
+        # append slice layer after pooling if shapesize not matched
+        if op_type == "MaxPool" or op_type == "AveragePool":
+            do_slice_h, do_slice_w = isPoolingSizeUnmatched(graph.shape_dict, node)
+            if do_slice_h:
+                layer = cvt._append_slice_after_pooling(node.outputs[0], 2, graph.shape_dict[node.outputs[0]][2])
+                layers.append(layer)
+            if do_slice_w:
+                if do_slice_h:
+                    layer = cvt._append_slice_after_pooling(layers[-1].outputs[0], 3, graph.shape_dict[node.outputs[0]][3])
+                else:
+                    layer = cvt._append_slice_after_pooling(node.outputs[0], 3, graph.shape_dict[node.outputs[0]][3])
+                layers.append(layer)
+            if do_slice_h or do_slice_w:
+                to_be_replaced[node.outputs[0]] = layers[-1].outputs[0]
+
         outs = node.outputs
         for out in outs:
             exist_edges.append(out)

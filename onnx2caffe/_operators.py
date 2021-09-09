@@ -441,3 +441,14 @@ _ONNX_NODE_REGISTRY = {
     "Flatten": _convert_Flatten,
     "Clip": _convert_clip,
 }
+
+def _append_slice_after_pooling(bottom, axis, slice_point):
+    name = bottom + "_slice_" + ("h" if axis == 2 else "w")
+    top1 = bottom + ("_h" if axis == 2 else "_w")
+    top2 = top1 + "_"
+    layer = myf("Slice", name, [bottom], [top1, top2],
+                slice_param=dict(
+                    slice_point=slice_point,
+                    axis=axis
+                ))
+    return layer
