@@ -72,7 +72,9 @@ def convertToCaffe(graph, prototxt_save_path, caffe_model_save_path):
                 break
         if input_non_exist_flag:
             continue
-
+        # replace Clip with Relu6
+        if op_type == "Clip":
+            op_type = "Relu6"
         if op_type not in cvt._ONNX_NODE_REGISTRY:
             err.unsupported_op(node)
             continue
@@ -135,6 +137,9 @@ def convertToCaffe(graph, prototxt_save_path, caffe_model_save_path):
         inputs = node.inputs
         inputs_tensor = node.input_tensors
         input_non_exist_flag = False
+        # replace Clip with Relu6
+        if op_type == "Clip":
+            op_type = "Relu6"
         if op_type not in wlr._ONNX_NODE_REGISTRY:
             err.unsupported_op(node)
             continue

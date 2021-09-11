@@ -72,6 +72,8 @@ def _convert_dropout(net, node, graph, err):
     pass
 def _convert_clip(net, node, graph, err):
     pass	
+def _convert_relu6(net, node, graph, err):
+    pass
 
 def _convert_gemm(net, node, graph, err):
     node_name = node.name
@@ -133,6 +135,7 @@ _ONNX_NODE_REGISTRY = {
     "Conv": _convert_conv,
     "Relu": _convert_relu,
     "LeakyRelu": _convert_leakyrelu,
+    "Relu6": _convert_relu6,
     "BatchNormalization": _convert_BatchNorm,
     "Add": _convert_Add,
     "Mul": _convert_Mul,
@@ -146,7 +149,7 @@ _ONNX_NODE_REGISTRY = {
     "ConvTranspose": _convert_conv_transpose,
     "Sigmoid": _convert_sigmoid,
     "Flatten": _convert_Flatten,
-    "Clip": _convert_clip,
+    # "Clip": _convert_clip,
 }
 
 

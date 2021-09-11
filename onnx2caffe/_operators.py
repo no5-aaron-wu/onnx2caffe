@@ -421,11 +421,69 @@ def _convert_clip(node,graph,err):
 
     return layer
 
+def _convert_relu6(node, graph, err):
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    name = node.name + "_relu6"
+    layers = []
+    # 1. relu
+    relu_name = name + "_relu"
+    layer = myf("ReLU", relu_name, [input_name], [relu_name + "_out"], in_place=False)
+    graph.channel_dims[relu_name + "_out"] = graph.channel_dims[input_name]
+    layers.append(layer)
+    # 2. threshold
+    thre_name = name + "_thre"
+    layer = myf("Threshold", thre_name, [relu_name + "_out"], [thre_name + "_out"],
+                in_place=False,
+                threshold_param=dict(threshold=6.0)
+                )
+    graph.channel_dims[thre_name + "_out"] = graph.channel_dims[relu_name + "_out"]
+    layers.append(layer)
+    # 3. threshold left(<=6) power
+    thre_left_power_name = name + "_thre_left_power"
+    layer = myf("Power", thre_left_power_name, [thre_name + "_out"], [thre_left_power_name + "_out"],
+                in_place=False,
+                power_param=dict(
+                    power=1.0,
+                    scale=(-1.0),
+                    shift=1.000001
+                )
+                )
+    graph.channel_dims[thre_left_power_name + "_out"] = graph.channel_dims[thre_name + "_out"]
+    layers.append(layer)
+    # 4. relu out product threshold left power out
+    relu_x_thre_left_name = name + "_relu_x_thre_left"
+    layer = myf("Eltwise", relu_x_thre_left_name, [relu_name + "_out", thre_left_power_name + "_out"],
+                [relu_x_thre_left_name + "_out"],
+                operation=P.Eltwise.PROD)
+    graph.channel_dims[relu_x_thre_left_name + "_out"] = graph.channel_dims[relu_name + "_out"]
+    layers.append(layer)
+    # 5. threshold right(>6) power
+    thre_right_power_name = name + "_thre_right_power"
+    layer = myf("Power", thre_right_power_name, [thre_name + "_out"], [thre_right_power_name + "_out"],
+                in_place=False,
+                power_param=dict(
+                    power=1.0,
+                    scale=6.0,
+                    shift=0.0
+                )
+                )
+    graph.channel_dims[thre_right_power_name + "_out"] = graph.channel_dims[thre_name + "_out"]
+    layers.append(layer)
+    # 6. add
+    add_name = name + "_add"
+    layer = myf("Eltwise", add_name, [relu_x_thre_left_name + "_out", thre_right_power_name + "_out"],
+                [output_name], operation=P.Eltwise.SUM)
+    graph.channel_dims[output_name] = graph.channel_dims[input_name]
+    layers.append(layer)
+
+    return tuple(layers)
 
 _ONNX_NODE_REGISTRY = {
     "Conv": _convert_conv,
     "Relu": _convert_relu,
     "LeakyRelu": _convert_leakyrelu,
+    "Relu6": _convert_relu6,
     "BatchNormalization": _convert_BatchNorm,
     "Add": _convert_Add,
     "Mul": _convert_Mul,
@@ -439,7 +497,7 @@ _ONNX_NODE_REGISTRY = {
     "ConvTranspose": _convert_conv_transpose,
     "Sigmoid": _convert_sigmoid,
     "Flatten": _convert_Flatten,
-    "Clip": _convert_clip,
+    # "Clip": _convert_clip,
 }
 
 def _append_slice_after_pooling(bottom, axis, slice_point):
